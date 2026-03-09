@@ -10,14 +10,6 @@ from ComputationalGraph.IrisData import IRIS_DATA
 
 class NeuralNetwork(ComputationalGraph):
     def createIrisDataset(self, trainSet: List[Tensor], testSet: List[Tensor], seed: int = 1) -> None:
-        """
-        Creates the embedded Iris dataset split used by the test models.
-
-        @param trainSet Output list to be filled with training tensors.
-        @param testSet Output list to be filled with test tensors.
-        @param seed Random seed used for shuffling the embedded dataset.
-        @return None.
-        """
         rng = random.Random(seed)
         rows = [r[:] for r in IRIS_DATA]  # defensive copy
         rng.shuffle(rows)
@@ -33,12 +25,6 @@ class NeuralNetwork(ComputationalGraph):
     # ---- Iris instance helpers (mirrors C++ intent) ----
     @staticmethod
     def getLabelIndex(instance: Tensor) -> int:
-        """
-        Returns the class label stored in the last entry of an instance tensor.
-
-        @param instance Instance tensor containing features followed by the label.
-        @return Integer class label.
-        """
         if len(instance.shape) != 1 or instance.shape[-1] < 2:
             raise ValueError(f"Expected a 1D instance tensor with feature(s)+label, got {instance.shape}")
         return int(instance.data[-1])
@@ -46,10 +32,8 @@ class NeuralNetwork(ComputationalGraph):
     @staticmethod
     def createInputTensor(instance: Tensor) -> Tensor:
         """
-        Creates an input tensor by removing the label value from the given instance.
-
-        @param instance Instance tensor containing features followed by the label.
-        @return Tensor containing only feature values.
+        C++ declares: Tensor createInputTensor(const Tensor& instance);
+        Return features only, dropping the last entry which is the label.
         """
         if len(instance.shape) != 1 or instance.shape[-1] < 2:
             raise ValueError(f"Expected a 1D instance tensor with feature(s)+label, got {instance.shape}")
@@ -57,12 +41,6 @@ class NeuralNetwork(ComputationalGraph):
         return Tensor([float(v) for v in instance.data[:size]], (size,))
 
     def test(self, testSet: List[Tensor]) -> float:
-        """
-        Evaluates the network on the given test set.
-
-        @param testSet List of instance tensors.
-        @return Classification accuracy in the range [0, 1].
-        """
         count = 0
         total = 0
         for instance in testSet:
@@ -77,11 +55,8 @@ class NeuralNetwork(ComputationalGraph):
     # ---- Output decoding (generic, used by tests + future models) ----
     def getClassLabels(self, outputNode) -> List[int]:
         """
-        Converts the output tensor to predicted class indices using argmax over the
-        last dimension.
-
-        @param outputNode Output node of the computational graph.
-        @return Predicted class indices.
+        Convert output tensor to predicted class indices (argmax on last dim).
+        Handles shapes like (C,), (1, C), (N, C), or higher-rank with last dim = C.
         """
         t: Tensor = outputNode.getValue()
         if t is None:
