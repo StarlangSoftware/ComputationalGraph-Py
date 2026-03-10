@@ -3,7 +3,7 @@ import math
 from .Function import Function
 from Math.Tensor import Tensor
 
-
+#deneme
 class DELU(Function):
     def __init__(self, a: float = 1.0, b: float = 2.0, xc: float = 1.25643):
         self.a = float(a)
