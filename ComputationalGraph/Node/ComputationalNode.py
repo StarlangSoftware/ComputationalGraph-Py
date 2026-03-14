@@ -1,116 +1,93 @@
-from __future__ import annotations
-
-from enum import Enum
-from typing import Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from Math.Tensor import Tensor
-from ComputationalGraph.types import FunctionLike
 
-
-class NodeType(Enum):
-    COMPUTATIONAL_NODE_TYPE = 0
-    CONCATENATED_NODE_TYPE = 1
-    MULTIPLICATION_NODE_TYPE = 2
-
+if TYPE_CHECKING:
+    from ComputationalGraph.ComputationalGraph import ComputationalGraph
 
 class ComputationalNode:
-    """
-    C++ parity for Node/ComputationalNode.{h,cpp}
-
-    Fields:
-      - nodeType
-      - value, backward
-      - learnable, biased
-      - valueNull, backwardNull
-      - function
-
-    Key behavior:
-      - updateValue(): value = value + backward
-      - setValueNull(): value = Tensor({0}), valueNull=True
-      - setBackwardNull(): backward = Tensor({0}), backwardNull=True
-    """
-
     def __init__(
         self,
         learnable: bool = False,
-        isBiased: bool = False,
-        function: FunctionLike | None = None,
-        value: Optional[Tensor] = None,
-        operator: Optional[str] = None,  # legacy/compat (ignored by core)
-        nodeType: NodeType = NodeType.COMPUTATIONAL_NODE_TYPE,
+        is_biased: bool = False,
+        value: Optional[Tensor] = None
     ):
-        self.nodeType: NodeType = nodeType
+        """
+        Initializes a ComputationalNode.
 
-        self.learnable: bool = bool(learnable)
-        self.biased: bool = bool(isBiased)
-        self.function: FunctionLike | None = function
+        :param learnable: Indicates if the node parameters can be updated.
+        :param is_biased: Indicates whether the node is biased.
+        :param value: The tensor value associated with the node.
+        """
+        self._value: Optional[Tensor] = value
+        self._backward: Optional[Tensor] = None
+        self._is_biased: bool = is_biased
+        self._learnable: bool = learnable
+        self.__children: List[ComputationalNode] = []
+        self.__parents: List[ComputationalNode] = []
 
-        # C++ default Tensor({0}) with null flags set
-        self.value: Tensor = value if value is not None else Tensor([0])
-        self.backward: Tensor = Tensor([0])
+    # --- Parent/Child Management ---
 
-        self.valueNull: bool = value is None
-        self.backwardNull: bool = True
+    def getChild(self, index: int) -> 'ComputationalNode':
+        return self.__children[index]
 
-        self.operator = operator  # keep for older codepaths
+    def addChild(self, child: 'ComputationalNode'):
+        self.__children.append(child)
 
-    def __hash__(self) -> int:
-        # Use identity-based hashing (like pointers in C++)
-        return id(self)
+    def addParent(self, parent: 'ComputationalNode'):
+        self.__parents.append(parent)
 
-    # --- C++ API parity ---
-    def isBiased(self) -> bool:
-        return self.biased
+    def add(self, child: 'ComputationalNode'):
+        """Adds a child and automatically sets this node as the child's parent."""
+        self.__children.append(child)
+        child.addParent(self)
 
-    def getFunction(self) -> FunctionLike | None:
-        return self.function
+    def getParent(self, index: int) -> 'ComputationalNode':
+        return self.__parents[index]
 
-    def getValue(self) -> Optional[Tensor]:
-        return None if self.valueNull else self.value
+    def childrenSize(self) -> int:
+        return len(self.__children)
 
-    def setValue(self, v: Optional[Tensor]) -> None:
-        if v is None:
-            self.setValueNull()
-            return
-        self.value = v
-        self.valueNull = False
+    def parentsSize(self) -> int:
+        return len(self.__parents)
 
-    def updateValue(self) -> None:
-        # C++: value = value.add(backward)
-        # Note: optimizer scales backward by learningRate in SGD, then updateValue adds it.
-        if self.valueNull:
-            raise ValueError("updateValue called while valueNull=True")
-        if self.backwardNull:
-            raise ValueError("updateValue called while backwardNull=True")
-        self.value = self.value + self.backward
-        self.valueNull = False
+    # --- Getters and Setters ---
 
     def isLearnable(self) -> bool:
-        return self.learnable
+        return self._learnable
+
+    def isBiased(self) -> bool:
+        return self._is_biased
+
+    def getValue(self) -> Optional[Tensor]:
+        return self._value
+
+    def setValue(self, value: Optional[Tensor]) -> None:
+        self._value = value
 
     def getBackward(self) -> Optional[Tensor]:
-        return None if self.backwardNull else self.backward
+        return self._backward
 
-    def setBackward(self, b: Optional[Tensor]) -> None:
-        if b is None:
-            self.setBackwardNull()
-            return
-        self.backward = b
-        self.backwardNull = False
+    def setBackward(self, backward: Optional[Tensor]) -> None:
+        self._backward = backward
 
-    def isValueNull(self) -> bool:
-        return self.valueNull
+    # --- Logic ---
 
-    def setValueNull(self) -> None:
-        self.value = Tensor([0])
-        self.valueNull = True
+    def updateValue(self):
+        """Updates the value by adding the backward (gradient) tensor."""
+        if self._value is not None and self._backward is not None:
+            self.setValue(self._value.add(self._backward))
+        else:
+            raise ValueError("Cannot update value: value or backward tensor is None.")
 
-    def isBackwardNull(self) -> bool:
-        return self.backwardNull
+    def __repr__(self) -> str:
+        """String representation of the node, mimicking the Java toString."""
+        details = []
+        if self._value is not None:
+            shape_str = ", ".join(map(str, self._value.getShape()))
+            details.append(f"Value Shape: [{shape_str}]")
 
-    def setBackwardNull(self) -> None:
-        self.backward = Tensor([0])
-        self.backwardNull = True
+        details.append(f"is learnable: {self._learnable}")
+        details.append(f"is biased: {self._is_biased}")
 
-    def getNodeType(self) -> NodeType:
-        return self.nodeType
+        return f"Node({', '.join(details)})"

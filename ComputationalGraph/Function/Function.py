@@ -1,25 +1,44 @@
 from abc import ABC, abstractmethod
+from typing import List, TYPE_CHECKING
 
-from Math.Tensor import Tensor
+if TYPE_CHECKING:
+    from ComputationalGraph.Node.ComputationalNode import ComputationalNode
+    from Math.Tensor import Tensor
 
 
 class Function(ABC):
     """
-    Abstract base class for activation functions.
+    An interface representing a mathematical function in the computational graph.
     """
 
     @abstractmethod
-    def calculate(self, tensor: Tensor) -> Tensor:
+    def calculate(self, matrix: 'Tensor') -> 'Tensor':
         """
-        Computes the function output for the given tensor.
-        :param tensor: NumPy array representing input values.
-        :return: Transformed NumPy array.
+        Calculates the forward pass of the function.
+
+        :param matrix: The input tensor.
+        :return: The resulting tensor after applying the function.
         """
         pass
 
     @abstractmethod
-    def derivative(self, value: Tensor, backward: Tensor) -> Tensor:
+    def derivative(self, value: 'Tensor', backward: 'Tensor') -> 'Tensor':
         """
-        Computes dL/dx using function output and incoming gradient.
+        Calculates the derivative (backward pass) of the function.
+
+        :param value: The current tensor value.
+        :param backward: The backward gradient tensor.
+        :return: The resulting gradient tensor.
+        """
+        pass
+
+    @abstractmethod
+    def addEdge(self, input_nodes: List['ComputationalNode'], is_biased: bool) -> 'ComputationalNode':
+        """
+        Adds an edge to the computational graph.
+
+        :param input_nodes: A list of input computational nodes.
+        :param is_biased: Indicates whether the connection is biased.
+        :return: The resulting computational node.
         """
         pass

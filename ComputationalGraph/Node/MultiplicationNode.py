@@ -1,50 +1,52 @@
-from __future__ import annotations
-
-from typing import Any, Optional
-
+from typing import Optional
 from Math.Tensor import Tensor
-
-from .ComputationalNode import ComputationalNode
+from ComputationalGraph.Node.ComputationalNode import ComputationalNode
 
 
 class MultiplicationNode(ComputationalNode):
     """
-    Java/C++ parity:
-
-    Constructors:
-      - MultiplicationNode(learnable: bool, isBiased: bool, isHadamard: bool=False, priorityNode: node|None=None)
-      - MultiplicationNode(weightsTensor: Tensor)  -> learnable=True, value=weightsTensor, isBiased=False
+    A node representing a multiplication operation in the computational graph.
     """
 
-    def __init__(
-        self,
-        learnable: bool | Tensor = False,
-        isBiased: bool = False,
-        isHadamard: bool = False,
-        priorityNode: Optional[Any] = None,
-    ):
-        if isinstance(learnable, Tensor):
-            # weights node ctor: learnable=True, fixed operator="*"
-            super().__init__(learnable=True, function=None, isBiased=False, operator="*", value=learnable)
-            self._is_hadamard = False
-            self._priority_node = None
-        else:
-            super().__init__(learnable=bool(learnable), function=None, isBiased=bool(isBiased), operator="*", value=None)
-            self._is_hadamard = bool(isHadamard)
-            self._priority_node = priorityNode
+    def __init__(self,
+                 learnable: bool = True,
+                 is_biased: bool = False,
+                 is_hadamard: bool = False,
+                 priority_node: Optional['ComputationalNode'] = None,
+                 value: Optional[Tensor] = None):
+        """
+        Initializes a MultiplicationNode.
+        Consolidates all Java constructor overloads into a single Python constructor.
 
-    def __repr__(self) -> str:
-        base = super().__repr__()
-        return f"{base[:-1]}, hadamard={self._is_hadamard}, priority={'set' if self._priority_node is not None else 'None'})"
+        :param learnable: Indicates whether the node is learnable.
+        :param is_biased: Indicates whether the node is biased.
+        :param is_hadamard: Indicates whether the multiplication is an element-wise (Hadamard) product.
+        :param priority_node: An optional priority computational node.
+        :param value: The tensor value associated with the node.
+        """
+        super().__init__(learnable=learnable, is_biased=is_biased, value=value)
+
+        self._is_hadamard: bool = is_hadamard
+        self._priority_node: Optional['ComputationalNode'] = priority_node
 
     def isHadamard(self) -> bool:
         return self._is_hadamard
 
-    def setHadamard(self, isHadamard: bool) -> None:
-        self._is_hadamard = bool(isHadamard)
-
-    def getPriorityNode(self) -> Optional[Any]:
+    def getPriorityNode(self) -> Optional['ComputationalNode']:
         return self._priority_node
 
-    def setPriorityNode(self, node: Optional[Any]) -> None:
-        self._priority_node = node
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the node.
+        Overrides the ComputationalNode __str__ to prefix with "MultiplicationNode".
+        """
+        details = []
+
+        if self.getValue() is not None:
+            shape_str = ", ".join(str(dim) for dim in self.getValue().getShape())
+            details.append(f"Value Shape: [{shape_str}]")
+
+        details.append(f"is learnable: {str(self._learnable).lower()}")
+        details.append(f"is biased: {str(self._is_biased).lower()}")
+
+        return f"MultiplicationNode({', '.join(details)})"

@@ -14,6 +14,9 @@ setup(
     author_email='olcay.yildiz@ozyegin.edu.tr',
     description='Computational Graph library',
     long_description=long_description,
-    install_requires = ['NlpToolkit-Math'],
+    install_requires=[
+        "nlptoolkit-math",
+        "NlpToolkit-Classification"
+    ],
     long_description_content_type='text/markdown'
 )

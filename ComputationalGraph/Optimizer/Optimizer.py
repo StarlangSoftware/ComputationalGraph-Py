@@ -1,118 +1,97 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Dict, List, Set
-
+from typing import List, Set
 from Math.Tensor import Tensor
 from ComputationalGraph.Node.ComputationalNode import ComputationalNode
 
 
-def _numel(shape: tuple[int, ...]) -> int:
-    n = 1
-    for d in shape:
-        n *= int(d)
-    return int(n)
-
-
-def _strides(shape: tuple[int, ...]) -> tuple[int, ...]:
-    strides: List[int] = []
-    prod = 1
-    for d in reversed(shape):
-        strides.append(prod)
-        prod *= int(d)
-    return tuple(reversed(strides))
-
-
-def _unflatten(flat_index: int, strides: tuple[int, ...]) -> List[int]:
-    idx: List[int] = []
-    for s in strides:
-        idx.append(flat_index // s)
-        flat_index %= s
-    return idx
-
-
-def _ravel_index(idx: List[int], strides: tuple[int, ...]) -> int:
-    return sum(i * s for i, s in zip(idx, strides))
-
-
 class Optimizer(ABC):
-    def __init__(self, learningRate: float, etaDecrease: float):
-        self.learningRate = float(learningRate)
-        self.etaDecrease = float(etaDecrease)
-
-    def setLearningRate(self) -> None:
-        # C++: learningRate *= etaDecrease
-        self.learningRate *= self.etaDecrease
-
-    @abstractmethod
-    def setGradients(self, node: ComputationalNode) -> None:
-        ...
-
-    def broadcast(self, node: ComputationalNode) -> int:
+    def __init__(self, learning_rate: float, eta_decrease: float):
         """
-        C++ parity:
-        Return the index of the only dimension where:
-          value_shape[i] != backward_shape[i] and value_shape[i] == 1
-        Else return -1 (no broadcast or ambiguous).
+        Initializes the Optimizer.
+
+        :param learning_rate: The step size for updates.
+        :param eta_decrease: The factor by which learning rate is multiplied over time.
         """
-        v = node.getValue().shape
-        b = node.getBackward().shape
+        self._learning_rate: float = learning_rate
+        self.__eta_decrease: float = eta_decrease
+
+    def setLearningRate(self):
+        """Updates the learning rate of the optimizer."""
+        self._learning_rate *= self.__eta_decrease
+
+    def __broadcast(self, node: "ComputationalNode") -> int:
+        """
+        Checks if broadcasting should be applied to the corresponding node.
+        Returns the index of the dimension to collapse, or -1 if none.
+        """
+        v_shape = node.getValue().getShape()
+        b_shape = node.getBackward().getShape()
+
+        # Ensure ranks match; if they don't, broadcasting logic might need more complexity
+        if len(v_shape) != len(b_shape):
+            pass
+
         index = -1
-        for i in range(len(v)):
-            if v[i] != b[i]:
-                if v[i] == 1:
+        for i in range(len(v_shape)):
+            if v_shape[i] != b_shape[i]:
+                if v_shape[i] == 1:
                     if index != -1:
                         return -1
                     index = i
+                else:
+                    raise ValueError("Value and Backward shapes are not compatible")
         return index
 
-    def _reduce_backward_to_value_shape(self, node: ComputationalNode, axis: int) -> None:
-        """
-        Safer Python implementation of the C++ broadcast reduction:
-        sums backward over the broadcasted axis into shape(value).
-        """
-        v_shape = tuple(node.getValue().shape)
-        b_tensor: Tensor = node.getBackward()
-        b_shape = tuple(b_tensor.shape)
-
-        v_strides = _strides(v_shape)
-        b_strides = _strides(b_shape)
-
-        accum = [0.0] * _numel(v_shape)
-
-        for flat in range(_numel(b_shape)):
-            b_idx = _unflatten(flat, b_strides)
-            v_idx = list(b_idx)
-            v_idx[axis] = 0  # broadcast axis collapsed
-            v_flat = _ravel_index(v_idx, v_strides)
-            accum[v_flat] += b_tensor.get(tuple(b_idx))
-
-        node.setBackward(Tensor(accum, v_shape))
-
-    def updateRecursive(
-        self,
-        visited: Set[ComputationalNode],
-        node: ComputationalNode,
-        nodeMap: Dict[ComputationalNode, List[ComputationalNode]],
-    ) -> None:
+    def __updateRecursive(self, visited: Set["ComputationalNode"], node: "ComputationalNode"):
+        """Recursive helper function to update the values of learnable nodes."""
         visited.add(node)
 
-        if node.isLearnable():
-            axis = self.broadcast(node)
-            if axis != -1:
-                self._reduce_backward_to_value_shape(node, axis)
+        if node.isLearnable() and node.getBackward() is not None:
+            index = self.__broadcast(node)
 
+            # Handling the case where backward tensor needs to be summed to match value shape
+            if index != -1:
+                v_shape = node.getValue().getShape()
+                b_shape = node.getBackward().getShape()
+
+                v_prod = 1
+                b_prod = 1
+                for i in range(len(v_shape) - 1, index - 1, -1):
+                    v_prod *= v_shape[i]
+                    b_prod *= b_shape[i]
+
+                backward_data = node.getBackward().getData()
+                # Initialize result list with zeros matching value total size
+                result_values = [0.0] * len(node.getValue().getData())
+
+                i = 0
+                while i < len(backward_data):
+                    for j in range(i, i + b_prod):
+                        # Logic: values[((j - i) % v) + v * (j / b)] += backwardValues.get(j);
+                        target_idx = ((j - i) % v_prod) + v_prod * (j // b_prod)
+                        result_values[target_idx] += backward_data[j]
+                    i += b_prod
+
+                node.setBackward(Tensor(result_values, v_shape))
+
+            # Apply specific optimizer logic (SGD, Adam, etc.)
             self.setGradients(node)
             node.updateValue()
 
-        if node in nodeMap:
-            for child in nodeMap[node]:
-                if child not in visited:
-                    self.updateRecursive(visited, child, nodeMap)
+        # Recurse through children
+        for t in range(node.childrenSize()):
+            child = node.getChild(t)
+            if child not in visited:
+                self.__updateRecursive(visited, child)
 
-    def updateValues(self, nodeMap: Dict[ComputationalNode, List[ComputationalNode]]) -> None:
-        visited: Set[ComputationalNode] = set()
-        nodes = list(nodeMap.keys())
-        for node in nodes:
+    @abstractmethod
+    def setGradients(self, node: "ComputationalNode"):
+        """Sets the gradients (backward values) of the node based on learning rate."""
+        pass
+
+    def updateValues(self, leaf_nodes: List["ComputationalNode"]):
+        """Updates the values of all learnable nodes in the graph."""
+        visited: Set["ComputationalNode"] = set()
+        for node in leaf_nodes:
             if node not in visited:
-                self.updateRecursive(visited, node, nodeMap)
+                self.__updateRecursive(visited, node)
