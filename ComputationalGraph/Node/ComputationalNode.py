@@ -1,9 +1,5 @@
 from typing import List, Optional, TYPE_CHECKING
-
 from Math.Tensor import Tensor
-
-if TYPE_CHECKING:
-    from ComputationalGraph.ComputationalGraph import ComputationalGraph
 
 class ComputationalNode:
     def __init__(
