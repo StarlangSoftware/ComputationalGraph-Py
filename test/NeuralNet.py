@@ -36,7 +36,7 @@ class NeuralNet(ComputationalGraph):
         # First layer
         n_input_with_bias = 5
         n_hidden_1 = 4
-        rng = py_random.Random(self.parameters.seed)
+        rng = py_random.Random(self.parameters.getSeed())
         t1 = Tensor(self.parameters.initializeWeights(n_input_with_bias, n_hidden_1, rng),
                     (n_input_with_bias, n_hidden_1))
         w1 = MultiplicationNode(value=t1)
@@ -44,26 +44,26 @@ class NeuralNet(ComputationalGraph):
         a1_sigmoid = self.addEdge(a1, Sigmoid())
         a1_sigmoid_dropout = self.addEdge(
             a1_sigmoid,
-            Dropout(self.parameters.getDropout(), py_random.Random(self.parameters.seed)),
+            Dropout(self.parameters.getDropout(), py_random.Random(self.parameters.getSeed())),
             is_biased=True
         )
 
         # Second layer
         n_hidden_2 = 20
-        t2 = Tensor(self.parameters.initializeWeights(n_hidden_1 + 1, n_hidden_2, py_random.Random(self.parameters.seed)),
+        t2 = Tensor(self.parameters.initializeWeights(n_hidden_1 + 1, n_hidden_2, py_random.Random(self.parameters.getSeed())),
                     (n_hidden_1 + 1, n_hidden_2))
         w2 = MultiplicationNode(value=t2)
         a2 = self.addEdge(a1_sigmoid_dropout, w2)
         a2_elu = self.addEdge(a2, ELU(3.0))
         a2_elu_dropout = self.addEdge(
             a2_elu,
-            Dropout(self.parameters.getDropout(), py_random.Random(self.parameters.seed)),
+            Dropout(self.parameters.getDropout(), py_random.Random(self.parameters.getSeed())),
             is_biased=True
         )
 
         # Output layer
         n_classes = 3
-        t3 = Tensor(self.parameters.initializeWeights(n_hidden_2 + 1, n_classes, py_random.Random(self.parameters.seed)),
+        t3 = Tensor(self.parameters.initializeWeights(n_hidden_2 + 1, n_classes, py_random.Random(self.parameters.getSeed())),
                     (21, n_classes))
         w3 = MultiplicationNode(value=t3)
         a3 = self.addEdge(a2_elu_dropout, w3)
@@ -74,7 +74,7 @@ class NeuralNet(ComputationalGraph):
 
         # Training loop
         for epoch in range(self.parameters.getEpoch()):
-            rng_shuffle = py_random.Random(self.parameters.seed)
+            rng_shuffle = py_random.Random(self.parameters.getSeed())
             for j in range(len(train_set)):
                 i1 = rng_shuffle.randint(0, len(train_set) - 1)
                 i2 = rng_shuffle.randint(0, len(train_set) - 1)
