@@ -1,4 +1,5 @@
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
 from ComputationalGraph.Optimizer.Optimizer import Optimizer
 from Math.Tensor import Tensor
 
@@ -7,25 +8,25 @@ if TYPE_CHECKING:
 
 
 class StochasticGradientDescent(Optimizer):
-    def __init__(self, learning_rate: float, eta_decrease: float):
+    """
+    Stochastic Gradient Descent optimizer.
+    """
+
+    def __init__(self, learning_rate: float, eta_decrease: float) -> None:
         """
-        Initializes the Stochastic Gradient Descent (SGD) optimizer.
+        Initializes the Stochastic Gradient Descent optimizer.
 
         :param learning_rate: The step size for updates.
-        :param eta_decrease: The factor by which learning rate is multiplied over time.
+        :param eta_decrease: Learning rate decay factor.
         """
         super().__init__(learning_rate, eta_decrease)
 
-    def setGradients(self, node: "ComputationalNode"):
+    def setGradients(self, node: "ComputationalNode") -> None:
         """
-        Sets the gradients (backward values) of the node to the learning rate
-        times the current backward values.
+        Sets the gradients of the given node using SGD.
+
+        :param node: Computational node whose gradients will be updated.
         """
-        # Retrieve the raw gradient data
         backward_data = node.getBackward().getData()
-
-        # Scale each gradient value by the current learning rate
         scaled_values = [val * self._learning_rate for val in backward_data]
-
-        # Update the node's backward tensor with the scaled gradients
         node.setBackward(Tensor(scaled_values, node.getBackward().getShape()))

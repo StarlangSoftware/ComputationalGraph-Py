@@ -9,7 +9,10 @@ from Math.Tensor import Tensor
 
 class Logarithm(Function):
     """
-    Applies the natural logarithm function to a tensor.
+    Applies the natural logarithm to each element of the input tensor.
+
+    :param value: Input tensor.
+    :return: Result tensor.
     """
 
     def calculate(self, value: Tensor) -> Tensor:
@@ -23,8 +26,11 @@ class Logarithm(Function):
 
     def derivative(self, value: Tensor, backward: Tensor) -> Tensor:
         """
-        Computes the derivative of the Logarithm function.
-        Note: 'value' here is the output of the log function, so x = exp(value).
+        Computes the derivative of the logarithm function.
+
+        :param value: Output tensor of the logarithm operation.
+        :param backward: Backward gradient tensor.
+        :return: Resulting gradient tensor.
         """
         new_data = []
 
@@ -36,7 +42,11 @@ class Logarithm(Function):
 
     def addEdge(self, input_nodes: List[ComputationalNode], is_biased: bool) -> ComputationalNode:
         """
-        Adds a Logarithm node to the graph.
+        Adds a Logarithm node to the computational graph.
+
+        :param input_nodes: Input computational nodes.
+        :param is_biased: Indicates whether the edge is biased.
+        :return: Newly created computational node.
         """
         new_node = FunctionNode(function=self, is_biased=is_biased)
         input_nodes[0].add(new_node)

@@ -455,10 +455,6 @@ class ComputationalGraph(ABC):
                 self.__getBiased(current_node)
 
             if current_node.getValue() is None:
-                print("DEBUG NODE TYPE:", type(current_node))
-                print("DEBUG NODE:", current_node)
-                print("DEBUG PARENTS:", current_node.parentsSize())
-                print("DEBUG CHILDREN:", current_node.childrenSize())
                 raise ValueError("Current node's value is None")
 
             if current_node.childrenSize() > 0:

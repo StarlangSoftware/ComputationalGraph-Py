@@ -14,7 +14,11 @@ class CrossEntropyLoss(Logarithm):
 
     def addEdge(self, input_nodes: List[ComputationalNode], is_biased: bool) -> ComputationalNode:
         """
-        Constructs the subgraph for the cross-entropy loss operation.
+        Constructs the computational subgraph for the cross-entropy loss operation.
+
+        :param input_nodes: Input computational nodes.
+        :param is_biased: Indicates whether the edge is biased.
+        :return: Newly created computational node.
         """
         # Create a function node that uses the Logarithm math (since 'self' is a Logarithm)
         logy = FunctionNode(function=self, is_biased=False)

@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from ComputationalGraph.Optimizer.Adam import Adam
 from Math.Tensor import Tensor
 
@@ -7,6 +8,12 @@ if TYPE_CHECKING:
 
 
 class AdamW(Adam):
+    """
+    AdamW optimizer implementation.
+    """
+
+    __weight_decay: float
+
     def __init__(
         self,
         learning_rate: float,
@@ -15,25 +22,28 @@ class AdamW(Adam):
         beta2: float,
         epsilon: float,
         weight_decay: float
-    ):
+    ) -> None:
         """
         Initializes the AdamW optimizer.
 
-        :param weight_decay: The coefficient for weight decay (decoupled L2 regularization).
+        :param learning_rate: Step size.
+        :param eta_decrease: Learning rate decay factor.
+        :param beta1: Exponential decay rate for the first moment.
+        :param beta2: Exponential decay rate for the second moment.
+        :param epsilon: Small constant for numerical stability.
+        :param weight_decay: Coefficient for weight decay.
         """
         super().__init__(learning_rate, eta_decrease, beta1, beta2, epsilon)
-        self.__weight_decay: float = weight_decay
+        self.__weight_decay = weight_decay
 
-    def setGradients(self, node: "ComputationalNode"):
+    def setGradients(self, node: "ComputationalNode") -> None:
         """
-        Sets the gradients using the AdamW logic:
-        1. Calculate the standard Adam update.
-        2. Add the decoupled weight decay term: (lr * wd * weight_value).
+        Sets the gradients using the AdamW update rule.
+
+        :param node: Computational node whose gradients will be updated.
         """
         gradients = self._calculate(node)
-
         current_values = node.getValue().getData()
-
         decay_factor = self._learning_rate * self.__weight_decay
 
         final_gradients = []

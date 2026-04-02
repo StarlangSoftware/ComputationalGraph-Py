@@ -12,18 +12,21 @@ class DELU(Function):
     DELU activation function representation for the computational graph.
     """
 
-    def __init__(self, a: float = 1.0, b: float = 2.0, xc: float = 1.25643):
+    __a: float
+    __b: float
+    __xc: float
+
+    def __init__(self, a: float = 1.0, b: float = 2.0, xc: float = 1.25643) -> None:
         """
         Initializes the DELU activation function.
-        Consolidates both Java constructors using default keyword arguments.
 
         :param a: Parameter 'a' for the DELU function.
         :param b: Parameter 'b' for the DELU function.
         :param xc: Threshold parameter 'xc' for the DELU function.
         """
-        self.a: float = a
-        self.b: float = b
-        self.xc: float = xc
+        self.__a = a
+        self.__b = b
+        self.__xc = xc
 
     def calculate(self, value: Tensor) -> Tensor:
         """
@@ -35,10 +38,10 @@ class DELU(Function):
         new_data = []
 
         for val in value.getData():
-            if val > self.xc:
+            if val > self.__xc:
                 new_data.append(val)
             else:
-                new_data.append((math.exp(self.a * val) - 1) / self.b)
+                new_data.append((math.exp(self.__a * val) - 1) / self.__b)
 
         return Tensor(new_data, value.getShape())
 
@@ -53,18 +56,23 @@ class DELU(Function):
         new_data = []
 
         for val, back_val in zip(value.getData(), backward.getData()):
-            if val > self.xc:
+            if val > self.__xc:
                 new_data.append(back_val)
             else:
-                derivative_val = (val * self.b + 1) * (self.a / self.b)
+                derivative_val = (val * self.__b + 1) * (self.__a / self.__b)
                 new_data.append(back_val * derivative_val)
 
         return Tensor(new_data, value.getShape())
 
-
-    def addEdge(self, input_nodes: List[ComputationalNode], is_biased: bool) -> ComputationalNode:
+    def addEdge(self,
+                input_nodes: List[ComputationalNode],
+                is_biased: bool) -> ComputationalNode:
         """
         Adds a DELU node to the computational graph.
+
+        :param input_nodes: Input computational nodes.
+        :param is_biased: Indicates whether the edge is biased.
+        :return: Newly created computational node.
         """
         new_node = FunctionNode(function=self, is_biased=is_biased)
         input_nodes[0].add(new_node)

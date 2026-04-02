@@ -41,6 +41,10 @@ class ReLU(Function):
     def addEdge(self, input_nodes: List[ComputationalNode], is_biased: bool) -> ComputationalNode:
         """
         Adds a ReLU node to the computational graph.
+
+        :param input_nodes: Input computational nodes.
+        :param is_biased: Indicates whether the edge is biased.
+        :return: Newly created computational node.
         """
         new_node = FunctionNode(function=self, is_biased=is_biased)
         input_nodes[0].add(new_node)
